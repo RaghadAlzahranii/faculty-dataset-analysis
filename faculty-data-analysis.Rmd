@@ -1,0 +1,282 @@
+---
+title: "BI Faculty Data Project"
+output:
+  word_document: default
+  html_document: default
+date: '2023-05-17'
+---
+
+```{r}
+library(tidyverse) 
+library(MASS)
+```
+
+
+```{r}
+library(readxl)
+Faculty_Data <- read_excel("/Users/rag/Desktop/BI/project/Faculty_Data.xlsx")
+Faculty_Data
+```
+#Cleaning the data: 
+
+```{r}
+is.na(Faculty_Data)
+```
+
+```{r}
+MISSING <- is.na(Faculty_Data$ID) |
+           is.na(Faculty_Data$Rank)  |
+           is.na(Faculty_Data$Experience)  |
+           is.na(Faculty_Data$Salary) 
+           
+
+# Count the number of rows flagged for deletion
+sum(MISSING)
+```
+
+There are three missing values in the Faculty Dataset which we will clean by elimination. 
+
+```{r}
+as.numeric(Faculty_Data$Salary)
+```
+
+```{r}
+as.numeric(Faculty_Data$Experience)
+```
+```{r}
+as.character(Faculty_Data$Rank)
+```
+
+```{r}
+Faculty_Data_NA <- na.omit(Faculty_Data)
+is.na(Faculty_Data_NA)
+```
+
+
+```{r}
+df=data.frame(Faculty_Data_NA)
+MISSING <- is.na(df$ID) |
+           is.na(df$Rank)  |
+           is.na(df$Experience)  |
+           is.na(df$Salary) 
+           
+# Count the number of rows flagged for deletion
+sum(MISSING)
+```
+
+```{r}
+Faculty_Data_NA
+```
+Now that our dataset does not have any missing values we can proceed with cleaning the data.
+We will check if there are any duplicated values:
+
+```{r}
+n_occur <- data.frame(table(Faculty_Data_NA$ID))
+n_occur[n_occur$Freq > 1,]
+```
+
+```{r}
+unique(Faculty_Data_NA)
+```
+
+We have cleaned the data by only showing the unique values as there were three duplicated values and they were excluded.
+
+Now we will check if there are any outliers:
+
+```{r}
+
+
+
+
+
+# Create a boxplot of the dataset, outliers are shown as two distinct points
+boxplot(Faculty_Data_NA$Experience, main="Experience")$out
+boxplot(Faculty_Data_NA$Salary, main="Salary")$out
+
+
+```
+
+```{r}
+boxplot(Faculty_Data_NA$Experience, plot=FALSE)$out
+boxplot(Faculty_Data_NA$Salary, plot=FALSE)$out
+
+
+```
+
+We found three outliers in the Salary column and two outliers in the Experience column, and now we will remove them
+
+
+```{r}
+Q <- quantile(Faculty_Data_NA$Salary, probs=c(.25, .75), na.rm = FALSE)
+iqr <- IQR(Faculty_Data_NA$Salary)
+up <-  Q[2]+1.5*iqr # Upper Range  
+low<- Q[1]-1.5*iqr # Lower Range
+```
+
+
+
+```{r}
+eliminated <- subset(Faculty_Data_NA, Faculty_Data_NA$Salary > (Q[1] - 1.5*iqr) & Faculty_Data_NA$Salary < (Q[2]+1.5*iqr))
+```
+
+```{r}
+boxplot(eliminated$Salary, plot=FALSE)$out
+```
+
+
+```{r}
+boxplot(eliminated$Salary, main="Salary")$out
+```
+
+
+
+The salary outliers were removed and now we will remove the Experience's
+
+```{r}
+Q <- quantile(Faculty_Data_NA$Experience, probs=c(.25, .75), na.rm = FALSE)
+iqr <- IQR(Faculty_Data_NA$Experience)
+up <-  Q[2]+1.5*iqr # Upper Range  
+low<- Q[1]-1.5*iqr # Lower Range
+```
+
+
+```{r}
+eliminated<- subset(Faculty_Data_NA, Faculty_Data_NA$Experience > (Q[1] - 1.5*iqr) & Faculty_Data_NA$Experience < (Q[2]+1.5*iqr))
+```
+
+```{r}
+boxplot(eliminated$Experience, plot=FALSE)$out
+```
+
+
+```{r}
+boxplot(eliminated$Experience, main="Experience")$out
+```
+
+Some of the Ranks are misspelled and we will correct them by using mutate:
+
+
+```{r}
+eliminated <- mutate(eliminated, Rank = recode(.x=Rank,"AssocProff" = "AssocProf"))
+eliminated <- mutate(eliminated, Rank = recode(.x=Rank,"AssstProf" = "AsstProf"))
+```
+
+```{r}
+qplot(x=Experience, y=Salary, data=eliminated,
+      color = Rank,
+      shape = Rank,
+      xlab = "Experience (years)",
+      ylab = "Salary (dollars)") 
+```
+
+
+
+```{r}
+fa <- scale (eliminated$Salary)     
+Outlier <- which(abs(fa) > 3) 
+eliminated <- eliminated[-Outlier, ] 
+```
+The dataset is now clean and ready to be plotted. 
+
+
+##Plotting the Experience:
+ 
+```{r}
+qplot(x = Experience, data = eliminated, geom = "bar")
+
+```
+ 
+```{r}
+
+base.plot <- ggplot(eliminated, aes(x = Experience)) +
+  xlab("Experience") 
+base.plot + geom_histogram()
+
+```
+
+
+```{r}
+base.plot + geom_histogram(aes(fill = Experience))
+```
+
+#Plotting the Salary:
+
+```{r}
+base.plot <- ggplot(eliminated, aes(x = Salary)) +
+  xlab("Salary") 
+base.plot + geom_histogram()
+```
+
+
+
+
+#Plotting the Rank:
+
+```{r}
+base.plot <- ggplot(eliminated, aes(x = Rank)) +
+  xlab("Rank") 
+base.plot + geom_histogram(stat="count")
+```
+
+
+#Plotting The Whole Data: 
+
+```{r}
+par(mfrow = c(2,2)) # Display plots in a single 2 x 2 figure 
+plot(eliminated$Experience)
+with(eliminated, hist(Experience))
+plot(eliminated$Salary)
+with(eliminated, hist(Salary))
+```
+
+
+```{r}
+with(eliminated, plot(Experience, Salary))
+```
+
+```{r}
+with(eliminated, plot(Experience, Salary))
+```
+```{r}
+library(ggplot2)
+```
+
+
+```{r}
+qplot(Experience, Salary, data=eliminated)  # using qplot from ggplot2
+```
+
+
+
+```{r}
+qplot(Rank, Salary, data=eliminated)  # using qplot from ggplot2
+```
+
+
+```{r}
+ggplot(eliminated, 
+       aes(x=Salary, y=Experience, shape=Rank, color=Rank)) + 
+  geom_point() + # Adds points (scatterplot)
+  geom_smooth(method = "lm") + # Adds regression lines
+  ylab("Salary (dollars)") + # Changes y-axis label
+  xlab("Experience (years)") + # Changes x-axis label
+  ggtitle("Salary by Experience") # Changes plot title
+```
+
+```{r}
+library(ggplot2)
+library(gridExtra)
+ 
+# Make 3 simple graphics:
+g1 <- ggplot(eliminated, aes(x=Salary)) + geom_density(fill="slateblue")
+g2 <- ggplot(eliminated, aes(x=Experience, y=Salary, color=Rank)) + geom_point(size=5) + theme(legend.position="none")
+g3 <- ggplot(eliminated, aes(x=factor(Rank), y=Salary, fill=Rank)) + geom_boxplot() + theme(legend.position="none")
+g4 <- ggplot(eliminated , aes(x=factor(Rank), fill=factor(Rank))) +  geom_bar()
+ 
+# Plots
+grid.arrange(g2, arrangeGrob(g3, g4, ncol=2), nrow = 2)
+grid.arrange(g1, g2, g3, nrow = 3)
+grid.arrange(g2, arrangeGrob(g3, g4, ncol=2), nrow = 1)
+grid.arrange(g2, arrangeGrob(g3, g4, nrow=2), nrow = 1)
+```
+
